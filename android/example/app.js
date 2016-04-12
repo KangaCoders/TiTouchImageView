@@ -1,54 +1,55 @@
-// This is a test harness for your module
-// You should do something interesting in this harness
-// to test out the module and to provide instructions
-// to users on how to use it by example.
-
-
-// open a single window
 var win = Ti.UI.createWindow({
 	backgroundColor:'white'
 });
 
 var TiTouchImageView = require('org.iotashan.TiTouchImageView');
-Ti.API.info("module is => " + TiTouchImageView);
 
 var imageView = TiTouchImageView.createView({
-	backgroundColor:'#0f0',
 	top:0,
 	left:0,
 	right:0,
 	bottom:0,
-	image:'demo2.jpg',
-	zoom:0.5,
-	maxZoom:5,
-	minZoom:0.25,
+	image:'demo3.jpg',
+	zoom:1,
+	maxZoom:10,
+	minZoom:0.5,
 });
+
+// 2000 x 2079
+
 
 win.add(imageView);
 
-var btn = Ti.UI.createButton({
-	top:10,
-	color:'#000',
-	backgroundColor:'#fff',
-	title:'Demo Methods',
+var view1 = Ti.UI.createView({
+	width: 50 + "px",
+	height: 50 + "px",
+	gravityX: 25,
+	gravityY: 50,
+	l: 1650 / 4000 * Math.min(Ti.Platform.displayCaps.platformWidth, Ti.Platform.displayCaps.platformHeight),
+	t: 1047 / 4000 * Math.min(Ti.Platform.displayCaps.platformWidth, Ti.Platform.displayCaps.platformHeight),
+	backgroundColor: "red",
+	opacity: 0.5
 });
-btn.addEventListener('click',function(){
-	imageView.image = Ti.Filesystem.getFile(Ti.Filesystem.resourcesDirectory,'demo.jpg').read();
-	imageView.zoom = 5;
-	imageView.scrollTo(500,500);
-});
-win.add(btn);
 
-var btn2 = Ti.UI.createButton({
-	bottom:10,
-	color:'#000',
-	backgroundColor:'#fff',
-	title:'Reset',
+win.add(view1);
+
+var view2 = Ti.UI.createView({
+	width: 50 + "px",
+	height: 50 + "px",
+	gravityX: 25,
+	gravityY: 50,
+	l: 890 / 4000 * Math.min(Ti.Platform.displayCaps.platformWidth, Ti.Platform.displayCaps.platformHeight),
+	t: 3374 / 4000 * Math.min(Ti.Platform.displayCaps.platformWidth, Ti.Platform.displayCaps.platformHeight),
+	backgroundColor: "blue",
+	opacity: 0.5
 });
-btn2.addEventListener('click',function(){
-	imageView.image = 'demo2.jpg';
-	imageView.resetZoom();
-});
-win.add(btn2);
+
+win.add(view2);
+
+imageView.setMarkers([view1, view2]);
 
 win.open();
+
+imageView.addEventListener("scrolling", function(_e){
+	console.log("Zoom: " + _e.zoom_scale);
+});

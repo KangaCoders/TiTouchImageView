@@ -1,0 +1,4 @@
+"/Users/kdesutter/Documents/Projects/TiTouchImageView/android/build/generated/java/org/iotashan/TiTouchImageView/TiTouchImageViewBootstrap.java"
+"/Users/kdesutter/Documents/Projects/TiTouchImageView/android/src/com/ortiz/touch/TouchImageView.java"
+"/Users/kdesutter/Documents/Projects/TiTouchImageView/android/src/org/iotashan/TiTouchImageView/TiTouchImageViewModule.java"
+"/Users/kdesutter/Documents/Projects/TiTouchImageView/android/src/org/iotashan/TiTouchImageView/ViewProxy.java"

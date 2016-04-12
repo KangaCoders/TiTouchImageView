@@ -43,31 +43,33 @@ public class ViewProxy extends TiViewProxy
 	// Standard Debugging variables
 	private static final String LCAT = "TiTouchImageView";
 	private static final boolean DBG = TiConfig.LOGD;
-	
+
 	private static final int MSG_FIRST_ID = TiViewProxy.MSG_LAST_ID + 1;
 	public static final int MSG_RESET_ZOOM = MSG_FIRST_ID + 101;
 	public static final int MSG_SCROLL_TO = MSG_FIRST_ID + 102;
-	
+
+	private TiViewProxy[] all_markers;
+
 	private class TiTouchImageView extends TiUIView
 	{
 		TouchImageView tiv;
-		
+
 		public TiTouchImageView(final TiViewProxy proxy) {
 			super(proxy);
-			
-			tiv = new TouchImageView(proxy.getActivity());
-			
+
+			tiv = new TouchImageView(proxy.getActivity(), proxy);
+
 			getLayoutParams().autoFillsHeight = true;
 			getLayoutParams().autoFillsWidth = true;
-			
+
 			setNativeView(tiv);
 		}
-		
+
 		@Override
 		public void processProperties(KrollDict props)
 		{
 			super.processProperties(props);
-			
+
 			if (props.containsKey("zoom")) {
 				tiv.setZoom(TiConvert.toFloat(proxy.getProperty("zoom")));
 			}
@@ -81,7 +83,7 @@ public class ViewProxy extends TiViewProxy
 				tiv.setMinZoom(TiConvert.toFloat(proxy.getProperty("minZoom")));
 			}
 		}
-		
+
 		@Override
 		public void propertyChanged(String key, Object oldValue, Object newValue, KrollProxy proxy)
 		{
@@ -109,16 +111,16 @@ public class ViewProxy extends TiViewProxy
 			tiv.resetZoom();
 		}
 
-        public float getCurrentZoom()
-        {
-            return tiv.getCurrentZoom();
-        }
+		public float getCurrentZoom()
+		{
+			return tiv.getCurrentZoom();
+		}
 
-        public PointF getScrollPosition()
-        {
-            return tiv.getScrollPosition();
-        }
-		
+		public PointF getScrollPosition()
+		{
+			return tiv.getScrollPosition();
+		}
+
 		private Bitmap loadImageFromApplication(String imageName) {
 			Bitmap result = null;
 			try {
@@ -131,7 +133,7 @@ public class ViewProxy extends TiViewProxy
 			}
 			return result;
 		}
-		
+
 		private void handleImage(Object val)
 		{
 			if (val instanceof TiBlob) {
@@ -150,14 +152,14 @@ public class ViewProxy extends TiViewProxy
 			// path with the proxy context. This locates a resource relative to the
 			// application resources folder
 			String result = resolveUrl(null, assetName);
-			
+
 			return result;
 		}
 
-        public void recycleBitmap ()
-        {
-            ((BitmapDrawable)tiv.getDrawable()).getBitmap().recycle();
-        }
+		public void recycleBitmap ()
+		{
+			((BitmapDrawable)tiv.getDrawable()).getBitmap().recycle();
+		}
 	}
 
 
@@ -177,66 +179,102 @@ public class ViewProxy extends TiViewProxy
 	{
 		return (TiTouchImageView) getOrCreateView();
 	}
-	
+
+	public void move_markers(float x, float y){
+		for (TiViewProxy m : all_markers) {
+			Float left = Float.parseFloat(((String) m.getProperty("l").toString()).replaceAll("[^\\d.-]", ""));
+			Float top = Float.parseFloat(((String) m.getProperty("t").toString()).replaceAll("[^\\d.-]", ""));
+			Float gravity_width = Float.parseFloat((String) m.getProperty("gravityX").toString());
+			Float gravity_height = Float.parseFloat((String) m.getProperty("gravityY").toString());
+
+			Float zoom = getCurrentZoom();
+
+			if(zoom == 0.0){
+				m.setProperty("left", Float.toString(x + left - gravity_width) + "px", true);
+				m.setProperty("top", Float.toString(y + top - gravity_height) + "px", true);
+			}else{
+				m.setProperty("left", Float.toString(x + left * zoom - gravity_width) + "px", true);
+				m.setProperty("top", Float.toString(y + top * zoom - gravity_height) + "px", true);
+			}
+		}
+		fireScrolling();
+	}
+
 	public boolean handleMessage(Message msg)
 	{
 		boolean handled = false;
-		
+
 		switch(msg.what) {
 			case MSG_RESET_ZOOM:
-				getView().resetZoom();
-				handled = true;
-				break;
+			getView().resetZoom();
+			handled = true;
+			break;
 			case MSG_SCROLL_TO:
-				handleScrollTo(msg.arg1, msg.arg2);
-				AsyncResult result = (AsyncResult) msg.obj;
+			handleScrollTo(msg.arg1, msg.arg2);
+			AsyncResult result = (AsyncResult) msg.obj;
 				result.setResult(null); // signal scrolled
 				handled = true;
 				break;
-			default:
+				default:
 				handled = super.handleMessage(msg);
+			}
+
+			return handled;
 		}
-		
-		return handled;
-	}
-	
+
 	// Methods
-	@Kroll.method
-	public void resetZoom()
-	{
-		getMainHandler().removeMessages(MSG_RESET_ZOOM);
-		getMainHandler().sendEmptyMessage(MSG_RESET_ZOOM);
-	}
+		@Kroll.method
+		public void resetZoom()
+		{
+			getMainHandler().removeMessages(MSG_RESET_ZOOM);
+			getMainHandler().sendEmptyMessage(MSG_RESET_ZOOM);
+		}
 
-	@Kroll.method
-	public void scrollTo(int x, int y) {
-		if (!TiApplication.isUIThread()) {
-			TiMessenger.sendBlockingMainMessage(getMainHandler().obtainMessage(MSG_SCROLL_TO, x, y), getActivity());
-		} else {
-			handleScrollTo(x,y);
+		@Kroll.method
+		public void fireScrolling()
+		{
+			HashMap<String,Object> params = new HashMap<String,Object>();
+			params.put("zoom_scale", getCurrentZoom());
+			fireEvent("scrolling", params);
+		}
+
+	// Methods
+		@Kroll.method
+		public void setMarkers(TiViewProxy[] markers)
+		{
+			all_markers = markers;
+			getView().resetZoom();
+		}
+
+		@Kroll.method
+		public void scrollTo(int x, int y) {
+			if (!TiApplication.isUIThread()) {
+				TiMessenger.sendBlockingMainMessage(getMainHandler().obtainMessage(MSG_SCROLL_TO, x, y), getActivity());
+			} else {
+				handleScrollTo(x,y);
+			}
+		}
+
+		private void handleScrollTo(int x, int y) {
+			getView().setScrollPosition(x,y);
+		}
+
+		@Kroll.method
+		public float getCurrentZoom() {
+			return getView().getCurrentZoom();
+		}
+
+		@Kroll.method
+		public HashMap getScrollPosition() {
+			PointF point = getView().getScrollPosition();
+			HashMap result = new HashMap();
+			result.put("x", point.x);
+			result.put("y", point.y);
+			return result;
+		}
+
+		@Kroll.method
+		public void recycleBitmap() {
+			getView().recycleBitmap ();
 		}
 	}
-	
-	private void handleScrollTo(int x, int y) {
-		getView().setScrollPosition(x,y);
-	}
-
-    @Kroll.method
-    public float getCurrentZoom() {
-        return getView().getCurrentZoom();
-    }
-
-    @Kroll.method
-    public HashMap getScrollPosition() {
-        PointF point = getView().getScrollPosition();
-        HashMap result = new HashMap();
-        result.put("x", point.x);
-        result.put("y", point.y);
-        return result;
-    }
-
-    @Kroll.method
-    public void recycleBitmap() {
-        getView().recycleBitmap ();
-    }
-}
